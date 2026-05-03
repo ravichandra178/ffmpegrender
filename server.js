@@ -9,6 +9,24 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Check ffmpeg availability at startup (uses FFMPEG_BIN if set)
+const { spawnSync } = require('child_process');
+function isFfmpegAvailable() {
+  const bin = process.env.FFMPEG_BIN || 'ffmpeg';
+  try {
+    const r = spawnSync(bin, ['-version'], { encoding: 'utf8' });
+    return r.status === 0 || (r.stdout && r.stdout.length > 0) || (r.stderr && r.stderr.length > 0);
+  } catch (e) {
+    return false;
+  }
+}
+const FFMPEG_AVAILABLE = isFfmpegAvailable();
+if (!FFMPEG_AVAILABLE) {
+  console.warn('ffmpeg not available in PATH and FFMPEG_BIN not set. Deploy using Docker (Dockerfile installs ffmpeg) or set FFMPEG_BIN to ffmpeg binary path.');
+} else {
+  console.log('ffmpeg available');
+}
+
 // Multer setup - store uploads in OS temp dir, keep original extensions
 const uploadDir = path.join(os.tmpdir(), 'ffmpegrender-uploads');
 const storage = multer.diskStorage({
@@ -34,8 +52,10 @@ const upload = multer({
 });
 
 // parse script as text field
+// accept both 'images[]' and 'images' field names (frontend may use either)
 const cpUpload = upload.fields([
   { name: 'images[]' },
+  { name: 'images' },
   { name: 'audio', maxCount: 1 }
 ]);
 
@@ -43,10 +63,14 @@ app.post('/render', cpUpload, async (req, res) => {
   const requestId = uuidv4();
   console.log(`[${requestId}] Render request received`);
 
+  // declare here so catch/finally can access for cleanup
+  let images = [];
+  let audio = null;
+
   try {
-  const imagesField = req.files['images[]'] || req.files['images'] || [];
-  const images = imagesField.map(f => f.path);
-  const audio = req.files['audio'] && req.files['audio'][0] && req.files['audio'][0].path;
+    const imagesField = req.files['images[]'] || req.files['images'] || [];
+    images = imagesField.map(f => f.path);
+    audio = req.files['audio'] && req.files['audio'][0] && req.files['audio'][0].path;
     const script = req.body.script || req.body.description || null;
 
     if (!images || images.length === 0) {
@@ -128,6 +152,10 @@ app.post('/render', cpUpload, async (req, res) => {
     }
     return res.status(500).json({ error: 'Internal server error during rendering' });
   }
+});
+
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', routes: ['/health', '/render'], ffmpeg: FFMPEG_AVAILABLE });
 });
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));

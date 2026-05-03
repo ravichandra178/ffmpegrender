@@ -16,10 +16,18 @@ How it works
 
 Response: returns the MP4 as an attachment stream.
 
-Deploy to Render
-1. Create a new Web Service on Render.
-2. Connect your GitHub repo and set the build command to `docker build -t render-image .` (Render will detect the Dockerfile automatically).
-3. Set the port to `3000`.
+Deploy to Render (Docker)
+1. Push this repository to GitHub.
+2. In Render create a new Web Service and connect the repo.
+3. Choose "Docker" as the environment. Render will use the `Dockerfile` in the repo which installs ffmpeg.
+4. Optionally add the included `render.yaml` manifest when creating the service so Render uses the Docker environment and the configured PORT and health checks.
+5. Deploy; Render will build the Docker image and run the container.
+
+Troubleshooting "ffmpeg not found" errors
+- If you see errors like "Failed to run ffmpeg (ffmpeg): NotFound: Failed to spawn 'ffmpeg': entity not found" this means the runtime environment doesn't have ffmpeg installed.
+- On macOS for local testing: `brew install ffmpeg` or set `FFMPEG_BIN` to the path to your ffmpeg binary.
+- On Render: ensure you're deploying with Docker (not a Run or Static environment). The included `Dockerfile` installs ffmpeg via apt so ffmpeg will be available inside the container. If you accidentally deploy without Docker (for example using a Deno/Node preset that doesn't use the Dockerfile), ffmpeg won't be available and you'll get the error above.
+
 
 Local dev
 Install dependencies and run:

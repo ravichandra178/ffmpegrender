@@ -1,0 +1,14 @@
+# Render service manifest for Docker deployment
+# This tells Render to deploy this repository as a Docker service using the provided Dockerfile.
+services:
+  - type: web
+    name: ffmpeg-render-backend
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: starter
+    region: oregon
+    envVars:
+      - key: PORT
+        value: "3000"
+    healthCheckPath: /health
+    autoDeploy: true

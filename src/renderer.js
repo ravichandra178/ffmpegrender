@@ -22,6 +22,10 @@ function runCommand(cmd, args, opts = {}) {
   });
 }
 
+function ffmpegBinary() {
+  return process.env.FFMPEG_BIN || 'ffmpeg';
+}
+
 // Parse script: expected simple format like lines with durations in seconds, one per image
 function parseScript(script, count) {
   if (!script) return Array(count).fill(3);
@@ -94,7 +98,8 @@ async function renderVideo({ images, audio, script, outPath, requestId }) {
   args.push('-y', outPath);
 
   try {
-    const result = await runCommand('ffmpeg', args);
+    const bin = ffmpegBinary();
+    const result = await runCommand(bin, args);
     console.log(`[${requestId}] ffmpeg completed`);
     return { stdout: result.stdout, stderr: result.stderr };
   } catch (err) {
